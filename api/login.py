@@ -16,7 +16,6 @@ from crud.user_repository import (
 from security.security import authenticate_user, create_access_token
 
 
-
 loginroute = APIRouter()
 
 

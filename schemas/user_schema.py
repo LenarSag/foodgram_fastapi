@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 from fastapi.exceptions import ValidationException
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -38,6 +39,14 @@ class UserCreate(UserBase):
                 "and a special character."
             )
         return value
+
+
+class UserCreated(UserBase, UserAuth):
+    avatar: Optional[str] = None
+
+
+class UserDB(UserCreated):
+    is_subscribed: bool = False
 
 
 class UserGetToken(BaseModel):
