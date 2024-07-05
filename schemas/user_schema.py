@@ -49,6 +49,11 @@ class UserDB(UserCreated):
     is_subscribed: bool = False
 
 
+class UserSubscription(UserDB):
+    recipes: list
+    recipes_count: int
+
+
 class UserGetToken(BaseModel):
     email: EmailStr = Field(max_length=MAX_EMAIL_LENGTH)
     password: str

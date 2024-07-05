@@ -14,8 +14,8 @@ API_URL = "api"
 
 app = FastAPI()
 
-app.include_router(loginroute, prefix=f"{API_URL}/auth")
-app.include_router(usersrouter, prefix=f"{API_URL}/users")
+app.include_router(loginroute, prefix=f"/{API_URL}/auth")
+app.include_router(usersrouter, prefix=f"/{API_URL}/users")
 
 
 @app.exception_handler(ValidationException)

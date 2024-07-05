@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
-from schemas.user_schema import UserDB
+from schemas.user_schema import UserDB, UserSubscription
 
 
 class PaginationBase(BaseModel):
@@ -12,3 +12,7 @@ class PaginationBase(BaseModel):
 
 class PaginatedUsers(PaginationBase):
     results: list[UserDB]
+
+
+class PaginatedSubscriptionUsers(PaginationBase):
+    results: list[UserSubscription]

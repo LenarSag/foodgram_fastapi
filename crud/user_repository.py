@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 
 from pydantic import EmailStr
-from sqlalchemy import func
+from sqlalchemy import func, insert
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,14 @@ async def create_user(
 
 async def get_user_by_id(session: AsyncSession, id: int) -> Optional[User]:
     query = select(User).filter_by(id=id)
+    result = await session.execute(query)
+    return result.scalars().first()
+
+
+async def get_user_by_id_with_recipes(
+    session: AsyncSession, id: int
+) -> Optional[User]:
+    query = select(User).filter_by(id=id).options(selectinload(User.recipes))
     result = await session.execute(query)
     return result.scalars().first()
 
@@ -79,7 +87,25 @@ async def get_following_users(
         select(User)
         .join(subscription, User.id == subscription.c.following_id)
         .filter(subscription.c.follower_id == current_user_id)
+        .options(selectinload(User.recipes))
     )
     result = await session.execute(query)
     following_users = result.scalars().all()
     return following_users
+
+
+async def subscription_exists(session: AsyncSession, following_id: int, follower_id: int) -> bool:
+    query = select(subscription).where(
+        subscription.c.following_id == following_id,
+        subscription.c.follower_id == follower_id
+    )
+    result = await session.execute(query)
+    subscription_row = result.fetchone()
+    return subscription_row is not None
+
+
+async def add_subscription(session: AsyncSession, following_id: int, follower_id: int):
+    value = insert(subscription).values(following_id=following_id, follower_id=follower_id)
+    await session.execute(value)
+    await session.commit()
+    return True
