@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 
 from pydantic import EmailStr
-from sqlalchemy import func, insert
+from sqlalchemy import func, insert, delete
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,14 @@ async def create_user(
 
 async def get_user_by_id(session: AsyncSession, id: int) -> Optional[User]:
     query = select(User).filter_by(id=id)
+    result = await session.execute(query)
+    return result.scalars().first()
+
+
+async def get_user_by_id_with_followers(
+        session: AsyncSession, id: int
+) -> Optional[User]:
+    query = select(User).filter_by(id=id).options(selectinload(User.following))
     result = await session.execute(query)
     return result.scalars().first()
 
@@ -62,6 +70,17 @@ async def get_all_users(
     return result.scalars().all()
 
 
+async def get_all_users_with_followers(
+        session: AsyncSession, skip: int = 0, limit: int = 10
+) -> Sequence[User]:
+    query = (
+        select(User).offset(skip).
+        limit(limit).options(selectinload(User.following))
+    )
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
 async def count_users(session: AsyncSession) -> int:
     query = select(func.count()).select_from(User)
     result = await session.execute(query)
@@ -94,7 +113,9 @@ async def get_following_users(
     return following_users
 
 
-async def subscription_exists(session: AsyncSession, following_id: int, follower_id: int) -> bool:
+async def subscription_exists(
+        session: AsyncSession, following_id: int, follower_id: int
+) -> bool:
     query = select(subscription).where(
         subscription.c.following_id == following_id,
         subscription.c.follower_id == follower_id
@@ -104,8 +125,45 @@ async def subscription_exists(session: AsyncSession, following_id: int, follower
     return subscription_row is not None
 
 
-async def add_subscription(session: AsyncSession, following_id: int, follower_id: int):
-    value = insert(subscription).values(following_id=following_id, follower_id=follower_id)
-    await session.execute(value)
+async def add_subscription(
+        session: AsyncSession, following_id: int, follower_id: int
+) -> bool:
+    stmt = insert(subscription).values(
+        following_id=following_id, follower_id=follower_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def delete_subscription(
+        session: AsyncSession, following_id: int, follower_id: int
+) -> bool:
+    stmt = delete(subscription).where(
+        subscription.c.following_id == following_id,
+        subscription.c.follower_id == follower_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def add_avatar_to_field(
+        session: AsyncSession, user_id: int, file_path: str
+    ) -> Optional[User]:
+    query = select(User).filter_by(id=user_id)
+    result = await session.execute(query)
+    user_model = result.scalars().first()
+    user_model.avatar = file_path
+    await session.commit()
+    await session.refresh(user_model)
+    return user_model
+
+
+async def delete_avatar_field(session: AsyncSession, user_id: int) -> bool:
+    query = select(User).filter_by(id=user_id)
+    result = await session.execute(query)
+    user_model = result.scalars().first()
+    user_model.avatar = None
     await session.commit()
     return True

@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 from sqlalchemy import Integer, ForeignKey, String, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
@@ -39,7 +40,7 @@ class User(Base):
     first_name: Mapped[str] = mapped_column(String(MAX_USERNAME_LENGTH))
     last_name: Mapped[str] = mapped_column(String(MAX_USERNAME_LENGTH))
     password: Mapped[str] = mapped_column(String, nullable=False)
-    avatar: Mapped[str] = mapped_column(String(200), nullable=True)
+    avatar: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     is_superuser: Mapped[bool] = mapped_column(default=False)
     is_active: Mapped[bool] = mapped_column(default=True)
 
@@ -54,7 +55,7 @@ class User(Base):
         secondary=subscription,
         primaryjoin=id == subscription.c.following_id,
         secondaryjoin=id == subscription.c.follower_id,
-        backref=backref("follower_subscriptions", cascade="all, delete"),
+        backref=backref("follower_subscriptions", cascade="all, delete")
     )
 
     recipes = relationship(

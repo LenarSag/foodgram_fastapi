@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
+from fastapi import HTTPException, Request, status, Depends
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import HTTPException, status, Depends
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,16 @@ from security.pwd_crypt import verify_password
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+
+def custom_oauth2_scheme(request: Request) -> Optional[str]:
+    authorization: Optional[str] = request.headers.get("Authorization")
+    if authorization:
+        scheme, token = authorization.split()
+        if scheme.lower() == "bearer":
+            return token
+    return None
+
 
 
 async def authenticate_user(
@@ -34,9 +44,39 @@ def create_access_token(user: User) -> str:
     return encoded_jwt
 
 
-def get_user_from_token(token: str = Depends(oauth2_scheme)):
+def get_user_from_token_custom(
+        token: str = Depends(custom_oauth2_scheme)) -> Optional[UserAuth]:
+    if token is None:
+        return None
     try:
-        payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
+        payload = jwt.decode(
+            token, config.SECRET_KEY, algorithms=[config.ALGORITHM]
+        )
+        print(payload.get("sub"))
+        return UserAuth(
+            id=int(payload.get("sub")),
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def get_user_from_token(
+        token: str = Depends(oauth2_scheme)) -> Optional[UserAuth]:
+    try:
+        payload = jwt.decode(
+            token, config.SECRET_KEY, algorithms=[config.ALGORITHM]
+        )
+        print(payload.get("sub"))
         return UserAuth(
             id=int(payload.get("sub")),
         )

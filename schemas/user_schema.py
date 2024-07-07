@@ -41,6 +41,10 @@ class UserCreate(UserBase):
         return value
 
 
+class UserAvatar(BaseModel):
+    avatar: str
+
+
 class UserCreated(UserBase, UserAuth):
     avatar: Optional[str] = None
 
