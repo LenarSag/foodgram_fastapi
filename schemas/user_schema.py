@@ -58,6 +58,26 @@ class UserSubscription(UserDB):
     recipes_count: int
 
 
+class UserChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value):
+        password_regex = re.compile(
+            r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+        )
+        if not password_regex.match(value):
+            raise ValidationException(
+                "Password must be at least 8 characters long, include an "
+                "uppercase letter, a lowercase letter, a number, "
+                "and a special character."
+            )
+        return value
+
+
+
 class UserGetToken(BaseModel):
     email: EmailStr = Field(max_length=MAX_EMAIL_LENGTH)
     password: str

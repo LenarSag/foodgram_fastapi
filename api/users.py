@@ -16,6 +16,7 @@ from schemas.pagination_schema import (
 from schemas.user_schema import (
     UserAuth,
     UserAvatar,
+    UserChangePassword,
     UserCreate,
     UserCreated,
     UserDB,
@@ -25,6 +26,7 @@ from db.database import get_session
 from crud.user_repository import (
     add_avatar_to_field,
     add_subscription,
+    change_password,
     check_username_and_email,
     count_following_users,
     count_users,
@@ -39,7 +41,7 @@ from crud.user_repository import (
     subscription_exists,
     delete_subscription
 )
-from security.pwd_crypt import get_hashed_password
+from security.pwd_crypt import get_hashed_password, verify_password
 from security.security import get_user_from_token, get_user_from_token_custom
 from utils.save_base64 import save_image_from_base64
 
@@ -171,6 +173,27 @@ async def get_myself(
 ):
     user = await get_user_by_id(session, current_user.id)
     return user
+
+
+@usersrouter.post("/set_password/", response_class=Response)
+async def set_password(
+    password_data: UserChangePassword,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token),
+):
+    user = await get_user_by_id(session, current_user.id)
+    is_correct_password = verify_password(
+        password_data.current_password, user.password
+    )
+    if not is_correct_password:
+        raise HTTPException(
+            detail="Current assword is incorrect", 
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    hashed_password = get_hashed_password(password_data.new_password)
+    await change_password(session, user, hashed_password)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @usersrouter.get("/subscriptions/", response_model=PaginatedSubscriptionUsers)

@@ -16,10 +16,10 @@ from crud.user_repository import (
 from security.security import authenticate_user, create_access_token
 
 
-loginroute = APIRouter()
+loginrouter = APIRouter()
 
 
-@loginroute.post("/login/")
+@loginrouter.post("/login/")
 async def login_for_access_token(
     user_data: UserGetToken,
     session: AsyncSession = Depends(get_session),

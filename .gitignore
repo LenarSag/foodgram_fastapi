@@ -152,5 +152,7 @@ yatube_api/posts/static/
 STATIC/
 sent_emails/
 migration/
+data/
 
 temp.py
+.ingredients.csv

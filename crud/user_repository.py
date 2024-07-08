@@ -150,7 +150,7 @@ async def delete_subscription(
 
 async def add_avatar_to_field(
         session: AsyncSession, user_id: int, file_path: str
-    ) -> Optional[User]:
+) -> Optional[User]:
     query = select(User).filter_by(id=user_id)
     result = await session.execute(query)
     user_model = result.scalars().first()
@@ -165,5 +165,13 @@ async def delete_avatar_field(session: AsyncSession, user_id: int) -> bool:
     result = await session.execute(query)
     user_model = result.scalars().first()
     user_model.avatar = None
+    await session.commit()
+    return True
+
+
+async def change_password(
+        session: AsyncSession, user: User, new_password
+) -> bool:
+    user.password = new_password
     await session.commit()
     return True

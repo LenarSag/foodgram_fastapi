@@ -15,6 +15,7 @@ def save_image_from_base64(base64_str, directory="media/users/images/"):
         )
     hash_object = hashlib.sha256(image_data)
     filename = f"{hash_object.hexdigest()}.png"
+
     if not os.path.exists(directory):
         os.makedirs(directory)
 

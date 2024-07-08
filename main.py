@@ -6,16 +6,20 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import ValidationException
 
 from db.database import init_models
-from api.login import loginroute
+from api.login import loginrouter
 from api.users import usersrouter
+from api.ingredients import ingredientsrouter
+from api.tags import tagsrouter
 
 
 API_URL = "api"
 
 app = FastAPI()
 
-app.include_router(loginroute, prefix=f"/{API_URL}/auth")
+app.include_router(loginrouter, prefix=f"/{API_URL}/auth")
 app.include_router(usersrouter, prefix=f"/{API_URL}/users")
+app.include_router(ingredientsrouter, prefix=f"/{API_URL}/ingredients")
+app.include_router(tagsrouter, prefix=f"/{API_URL}/tags")
 
 
 @app.exception_handler(ValidationException)

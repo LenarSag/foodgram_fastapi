@@ -26,7 +26,6 @@ def custom_oauth2_scheme(request: Request) -> Optional[str]:
     return None
 
 
-
 async def authenticate_user(
     session: AsyncSession, email: EmailStr, plain_password: str
 ) -> Optional[User]:
