@@ -10,6 +10,7 @@ from api.login import loginrouter
 from api.users import usersrouter
 from api.ingredients import ingredientsrouter
 from api.tags import tagsrouter
+from api.recipes import recipesrouter
 
 
 API_URL = "api"
@@ -20,12 +21,14 @@ app.include_router(loginrouter, prefix=f"/{API_URL}/auth")
 app.include_router(usersrouter, prefix=f"/{API_URL}/users")
 app.include_router(ingredientsrouter, prefix=f"/{API_URL}/ingredients")
 app.include_router(tagsrouter, prefix=f"/{API_URL}/tags")
+app.include_router(recipesrouter, prefix=f"/{API_URL}/recipes")
 
 
 @app.exception_handler(ValidationException)
 async def custom_pydantic_validation_exception_handler(request, exc):
     return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST, content={"detail": exc.errors()}
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.errors()}
     )
 
 

@@ -18,3 +18,12 @@ async def get_tag_by_id(
     query = select(Tag).filter_by(id=tag_id)
     result = await session.execute(query)
     return result.scalars().first()
+
+
+async def tags_exists(
+    session: AsyncSession, tags: list[int]
+) -> Sequence[Tag]:
+    query = select(Tag).filter(Tag.id.in_(tags))
+    result = await session.execute(query)
+    existing_tags = result.scalars().all()
+    return existing_tags

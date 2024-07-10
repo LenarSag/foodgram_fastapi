@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
-    DEFAULT_PAGE_NUMBER, MAX_OBJ_PER_PAGE, MIN_PAGE_NUM, OBJ_PER_PAGE
+    DEFAULT_PAGE_NUMBER, MAX_OBJ_PER_PAGE, MIN_PAGE_NUM, OBJ_PER_PAGE, USER_DIRECTORY
 )
 from schemas.pagination_schema import (
     PaginatedSubscriptionUsers,
@@ -143,7 +143,7 @@ async def add_avatar(
             detail="Field avatar can't be empty",
             status_code=status.HTTP_400_BAD_REQUEST
         )
-    file_path = save_image_from_base64(base64_str)
+    file_path = save_image_from_base64(base64_str, USER_DIRECTORY)
 
     await add_avatar_to_field(session, current_user.id, file_path)
 

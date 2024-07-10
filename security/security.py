@@ -51,7 +51,6 @@ def get_user_from_token_custom(
         payload = jwt.decode(
             token, config.SECRET_KEY, algorithms=[config.ALGORITHM]
         )
-        print(payload.get("sub"))
         return UserAuth(
             id=int(payload.get("sub")),
         )
@@ -75,7 +74,6 @@ def get_user_from_token(
         payload = jwt.decode(
             token, config.SECRET_KEY, algorithms=[config.ALGORITHM]
         )
-        print(payload.get("sub"))
         return UserAuth(
             id=int(payload.get("sub")),
         )

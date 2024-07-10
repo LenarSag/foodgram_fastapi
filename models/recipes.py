@@ -103,7 +103,7 @@ class Recipe(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     name: Mapped[str] = mapped_column(String(MAX_FIELD_LENGTH), nullable=False)
-    image = Mapped[str]
+    image: Mapped[str] = mapped_column(String, nullable=False, default="okokok")
     text: Mapped[str] = mapped_column(Text, nullable=False)
     cooking_time: Mapped[int] = mapped_column(
         SmallInteger,
