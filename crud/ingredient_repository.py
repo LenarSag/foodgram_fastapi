@@ -1,9 +1,10 @@
 from typing import Optional, Sequence
 
+from sqlalchemy import Row
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.recipes import Ingredient
+from models.recipes import Ingredient, RecipeIngredient
 
 
 async def get_all_ingredients(session: AsyncSession) -> Sequence[Ingredient]:
@@ -27,3 +28,21 @@ async def ingredients_exists(
     result = await session.execute(query)
     existing_ingredients = result.scalars().all()
     return existing_ingredients
+
+
+async def get_ingredients_details(
+    session: AsyncSession, recipe_id: int
+) -> Sequence[Row[tuple[int, int, str, str]]]:
+    query = (
+        select(
+            RecipeIngredient.amount,
+            Ingredient.id,
+            Ingredient.name,
+            Ingredient.measurement_unit
+        )
+        .join(Ingredient, RecipeIngredient.ingredient_id == Ingredient.id)
+        .where(RecipeIngredient.recipe_id == recipe_id)
+    )
+    result = await session.execute(query)
+    ingredients = result.fetchall()
+    return ingredients

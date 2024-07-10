@@ -1,16 +1,18 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Query, status, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import DEFAULT_PAGE_NUMBER, MAX_OBJ_PER_PAGE, MIN_PAGE_NUM, OBJ_PER_PAGE, RECIPE_DIRECTORY
-from crud.ingredient_repository import ingredients_exists
+from crud.ingredient_repository import get_ingredients_details, ingredients_exists
 from crud.recipes_repository import check_recipe_exists, create_recipe, get_all_recipes
 from crud.tag_repository import tags_exists
 from crud.user_repository import get_user_by_id
 from db.database import get_session
 
 
-from schemas.recipe_schema import RecipeCreate
+from schemas.ingredient_schema import IngredientInRecipe
+from schemas.recipe_schema import RecipeCreate, RecipeDB
 from schemas.user_schema import UserAuth
 from security.security import get_user_from_token, get_user_from_token_custom
 from utils.save_base64 import save_image_from_base64
@@ -35,7 +37,7 @@ async def get_recipes(
     pass
 
 
-@recipesrouter.post("/")
+@recipesrouter.post("/", response_class=JSONResponse)
 async def create_new_recipe(
     request: Request,
     new_recipe: RecipeCreate,
@@ -76,4 +78,33 @@ async def create_new_recipe(
         session, recipe_data, validated_tags, validated_ingredients
     )
 
-    return new_recipe
+    ingredients_list_with_amount = await get_ingredients_details(
+        session, new_recipe.id
+    )
+    serialized_ingredients = [
+        IngredientInRecipe(
+            id=ingredient.id,
+            name=ingredient.name,
+            measurement_unit=ingredient.measurement_unit,
+            amount=ingredient.amount
+        )
+        for ingredient in ingredients_list_with_amount
+    ]
+
+    serialized_recipe = RecipeDB(
+        id=new_recipe.id,
+        tags=new_recipe.tags,
+        author=new_recipe.author,
+        ingredients=serialized_ingredients,
+        is_favorited=False,
+        is_in_shopping_cart=False,
+        name=new_recipe.name,
+        image=new_recipe.image,
+        text=new_recipe.text,
+        cooking_time=new_recipe.cooking_time
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content=serialized_recipe.model_dump()
+    )

@@ -46,7 +46,7 @@ class UserAvatar(BaseModel):
 
 
 class UserCreated(UserBase, UserAuth):
-    avatar: Optional[str] = None
+    avatar: Optional[str]
 
 
 class UserDB(UserCreated):

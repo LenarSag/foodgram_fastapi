@@ -17,7 +17,7 @@ API_URL = "api"
 
 app = FastAPI()
 
-app.include_router(loginrouter, prefix=f"/{API_URL}/auth")
+app.include_router(loginrouter, prefix=f"/{API_URL}/auth/token")
 app.include_router(usersrouter, prefix=f"/{API_URL}/users")
 app.include_router(ingredientsrouter, prefix=f"/{API_URL}/ingredients")
 app.include_router(tagsrouter, prefix=f"/{API_URL}/tags")

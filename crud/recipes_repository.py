@@ -34,7 +34,7 @@ async def create_recipe(
     ]
     session.add_all(recipe_ingredient)
     await session.commit()
-    await session.refresh(recipe)
+    await session.refresh(recipe, attribute_names=["tags", "author"])
 
     return recipe
 

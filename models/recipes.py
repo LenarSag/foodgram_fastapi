@@ -1,13 +1,11 @@
 from datetime import datetime
 
-from typing import Optional
 from sqlalchemy import (
     Column,
     ForeignKey,
     SmallInteger,
     String,
     Text,
-    Integer,
     DateTime,
     Table,
     func,
@@ -16,7 +14,15 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from config import MAX_COOKING_TIME, MAX_FIELD_LENGTH, MAX_INGREDIENT_AMOUNT, MAX_SLUG_LENGTH, MAX_UNIT_LENGTH, MIN_COOKING_TIME, MIN_INGREDIENT_AMOUNT
+from config import (
+    MAX_COOKING_TIME,
+    MAX_FIELD_LENGTH,
+    MAX_INGREDIENT_AMOUNT,
+    MAX_SLUG_LENGTH,
+    MAX_UNIT_LENGTH,
+    MIN_COOKING_TIME,
+    MIN_INGREDIENT_AMOUNT
+)
 from models.base import Base
 from utils.short_url import get_hashed_short_url
 
@@ -77,7 +83,8 @@ class RecipeIngredient(Base):
             ),
         nullable=False
     )
-    ingredient = relationship("Ingredient", back_populates="recipes")
+
+    ingredient = relationship("Ingredient", back_populates="recipe_ingredients")
     recipe = relationship("Recipe", back_populates="ingredients")
 
 
@@ -88,7 +95,7 @@ class Ingredient(Base):
     name: Mapped[str] = mapped_column(String(MAX_FIELD_LENGTH))
     measurement_unit: Mapped[str] = mapped_column(String(MAX_UNIT_LENGTH))
 
-    recipes = relationship("RecipeIngredient", back_populates="ingredient")
+    recipe_ingredients = relationship("RecipeIngredient", back_populates="ingredient")
 
     __table_args__ = (
         UniqueConstraint(
@@ -103,7 +110,7 @@ class Recipe(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     name: Mapped[str] = mapped_column(String(MAX_FIELD_LENGTH), nullable=False)
-    image: Mapped[str] = mapped_column(String, nullable=False, default="okokok")
+    image: Mapped[str] = mapped_column(String, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     cooking_time: Mapped[int] = mapped_column(
         SmallInteger,
@@ -120,7 +127,6 @@ class Recipe(Base):
         "Tag", secondary=recipe_tag, back_populates="recipes"
     )
     ingredients = relationship("RecipeIngredient", back_populates="recipe")
-
     user_favorite = relationship(
         "User", secondary=favorite, back_populates="favorite_recipes"
     )

@@ -4,24 +4,15 @@ from typing_extensions import Annotated
 from config import (
     MAX_COOKING_TIME,
     MAX_FIELD_LENGTH,
-    MAX_INGREDIENT_AMOUNT,
     MIN_COOKING_TIME,
-    MIN_INGREDIENT_AMOUNT
 )
-
-
-class Ingredients(BaseModel):
-    id: Annotated[int, Field(ge=1)]
-    amount: Annotated[
-        int, Field(ge=MIN_INGREDIENT_AMOUNT, le=MAX_INGREDIENT_AMOUNT)
-    ]
-
-    class Config:
-        extra = "allow"
+from schemas.ingredient_schema import IngredientInRecipe, IngredientsRecipeCreate
+from schemas.tag_schema import TagDB
+from schemas.user_schema import UserDB
 
 
 class RecipeCreate(BaseModel):
-    ingredients: list[Ingredients]
+    ingredients: list[IngredientsRecipeCreate]
     tags: list[Annotated[int, Field(ge=1)]]
     text: str
     image: str
@@ -43,3 +34,16 @@ class RecipeCreate(BaseModel):
         if not value:
             raise ValueError("Ingredients can't be empty")
         return value
+
+
+class RecipeDB(BaseModel):
+    id: int
+    tags: list[TagDB]
+    author: UserDB
+    ingredients: list[IngredientInRecipe]
+    is_favorited: bool = False
+    is_in_shopping_cart: bool = False
+    name: str
+    image: str
+    text: str
+    cooking_time: int
