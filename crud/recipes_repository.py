@@ -1,6 +1,5 @@
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
-from sqlalchemy import insert
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +17,7 @@ async def create_recipe(
     recipe_data: dict[str, Any],
     tag_models: Sequence[Tag],
     ingredients_list: list[dict[str, int]]
-):
+) -> Recipe:
     recipe = Recipe(**recipe_data)
     session.add(recipe)
     recipe.tags.extend(tag_models)
