@@ -44,6 +44,18 @@ async def get_user_by_id_with_recipes(
     return result.scalars().first()
 
 
+async def get_user_with_followers_cart_favorites(
+    session: AsyncSession, id: int
+) -> Optional[User]:
+    query = select(User).filter_by(id=id).options(
+        selectinload(User.follower),
+        selectinload(User.on_cart_recipes),
+        selectinload(User.favorite_recipes)
+        )
+    result = await session.execute(query)
+    return result.scalars().first()
+
+
 async def get_user_by_email(
         session: AsyncSession, email: EmailStr
 ) -> Optional[User]:

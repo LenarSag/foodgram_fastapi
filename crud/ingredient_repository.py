@@ -44,5 +44,4 @@ async def get_ingredients_details(
         .where(RecipeIngredient.recipe_id == recipe_id)
     )
     result = await session.execute(query)
-    ingredients = result.fetchall()
-    return ingredients
+    return result.fetchall()

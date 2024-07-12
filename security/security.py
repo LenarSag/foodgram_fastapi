@@ -44,7 +44,8 @@ def create_access_token(user: User) -> str:
 
 
 def get_user_from_token_custom(
-        token: str = Depends(custom_oauth2_scheme)) -> Optional[UserAuth]:
+        token: Optional[str] = Depends(custom_oauth2_scheme)
+) -> Optional[UserAuth]:
     if token is None:
         return None
     try:

@@ -84,8 +84,12 @@ class RecipeIngredient(Base):
         nullable=False
     )
 
-    ingredient = relationship("Ingredient", back_populates="recipe_ingredients")
-    recipe = relationship("Recipe", back_populates="ingredients")
+    ingredient: Mapped["Ingredient"] = relationship(
+        back_populates="recipe_associations"
+    )
+    recipe: Mapped["Recipe"] = relationship(
+        back_populates="ingredient_associations"
+    )
 
 
 class Ingredient(Base):
@@ -95,7 +99,12 @@ class Ingredient(Base):
     name: Mapped[str] = mapped_column(String(MAX_FIELD_LENGTH))
     measurement_unit: Mapped[str] = mapped_column(String(MAX_UNIT_LENGTH))
 
-    recipe_ingredients = relationship("RecipeIngredient", back_populates="ingredient")
+    recipes: Mapped[list["Recipe"]] = relationship(
+        secondary="recipe_ingredient", back_populates="ingredients"
+    )
+    recipe_associations: Mapped[list["RecipeIngredient"]] = relationship(
+        back_populates="ingredient"
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -126,7 +135,12 @@ class Recipe(Base):
     tags: Mapped[list["Tag"]] = relationship(
         "Tag", secondary=recipe_tag, back_populates="recipes"
     )
-    ingredients = relationship("RecipeIngredient", back_populates="recipe")
+    ingredients: Mapped[list["Ingredient"]] = relationship(
+        secondary="recipe_ingredient", back_populates="recipes"
+    )
+    ingredient_associations: Mapped[list["RecipeIngredient"]] = relationship(
+        back_populates="recipe"
+    )
     user_favorite = relationship(
         "User", secondary=favorite, back_populates="favorite_recipes"
     )

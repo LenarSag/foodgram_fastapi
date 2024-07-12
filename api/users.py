@@ -7,7 +7,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
-    DEFAULT_PAGE_NUMBER, MAX_OBJ_PER_PAGE, MIN_PAGE_NUM, OBJ_PER_PAGE, USER_DIRECTORY
+    DEFAULT_PAGE_NUMBER,
+    MAX_OBJ_PER_PAGE,
+    MIN_PAGE_NUM,
+    OBJ_PER_PAGE,
+    USER_DIRECTORY
 )
 from schemas.pagination_schema import (
     PaginatedSubscriptionUsers,
@@ -53,7 +57,7 @@ usersrouter = APIRouter()
 async def get_users(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    current_user: UserAuth = Depends(get_user_from_token_custom),
+    current_user: Optional[UserAuth] = Depends(get_user_from_token_custom),
     page: int = Query(DEFAULT_PAGE_NUMBER, ge=MIN_PAGE_NUM),
     size: int = Query(OBJ_PER_PAGE, le=MAX_OBJ_PER_PAGE)
 ):
@@ -321,7 +325,7 @@ async def delete_subscribe(
 async def get_user(
     user_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: UserAuth = Depends(get_user_from_token_custom),
+    current_user: Optional[UserAuth] = Depends(get_user_from_token_custom),
 ):
     user = await get_user_by_id_with_followers(session, user_id)
     if not user:
