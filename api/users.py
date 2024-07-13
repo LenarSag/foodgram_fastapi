@@ -47,6 +47,7 @@ from crud.user_repository import (
 )
 from security.pwd_crypt import get_hashed_password, verify_password
 from security.security import get_user_from_token, get_user_from_token_custom
+from utils.custom_pagination import get_prev_and_next_page
 from utils.save_base64 import save_image_from_base64
 
 
@@ -68,15 +69,10 @@ async def get_users(
     else:
         users = await get_all_users(session, skip=(page-1)*size, limit=size)
 
-    base_url = str(request.url).split("?")[0]
-    next_url = (
-        f"{base_url}?page={page + 1}&size={size}"
-        if (page * size) < total_users else None
+    previous_url, next_url = get_prev_and_next_page(
+        request, page, size, total_users
     )
-    previous_url = (
-        f"{base_url}?page={page - 1}&size={size}"
-        if page > 1 else None
-    )
+
     results = [
         UserDB(
             id=user.id,
@@ -212,15 +208,8 @@ async def get_my_subscriptions(
     total = await count_following_users(session, current_user.id)
     users = await get_following_users(session, current_user.id)
 
-    base_url = str(request.url).split("?")[0]
-    next_url = (
-        f"{base_url}?page={page + 1}&size={size}"
-        if (page * size) < total else None
-    )
-    previous_url = (
-        f"{base_url}?page={page - 1}&size={size}"
-        if page > 1 else None
-    )
+    previous_url, next_url = get_prev_and_next_page(request, page, size, total)
+    
     results = [
         UserSubscription(
             id=user.id,

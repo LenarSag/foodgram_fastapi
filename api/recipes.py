@@ -1,6 +1,8 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, Query, status, Depends
+from fastapi import (
+    APIRouter, HTTPException, Request, Response, Query, status, Depends
+)
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,32 +15,29 @@ from config import (
 )
 from crud.ingredient_repository import get_ingredients_details
 from crud.recipes_repository import (
-    check_recipe_exists,
     count_recipes_with_filters,
     create_recipe,
+    delete_recipe_model,
     get_recipe_by_id,
-    get_recipe_by_id_test,
-    get_recipes_with_filters
+    get_recipe_by_id_with_author_tags,
+    get_recipe_by_id_with_author_tags_ingredients,
+    get_recipe_by_user_id_and_name,
+    get_recipes_with_filters,
+    update_recipe_model
 )
-from crud.user_repository import get_user_by_id, get_user_by_id_with_followers, get_user_with_followers_cart_favorites
+from crud.user_repository import get_user_with_followers_cart_favorites
 from db.database import get_session
 from schemas.ingredient_schema import IngredientInRecipe
 from schemas.pagination_schema import PaginatedRecipes
-from schemas.recipe_schema import RecipeCreate, RecipeDB
+from schemas.recipe_schema import RecipeBase, RecipeCreate, RecipeDB
 from schemas.user_schema import UserAuth, UserDB
 from security.security import get_user_from_token, get_user_from_token_custom
+from utils.custom_pagination import get_prev_and_next_page
 from utils.save_base64 import save_image_from_base64
 from utils.validators import check_tags, check_ingredients
 
 
 recipesrouter = APIRouter()
-
-
-@recipesrouter.get("/test/{recipe_id}")
-async def get_test(recipe_id: int, session: AsyncSession = Depends(get_session)):
-    recipe = await get_recipe_by_id_test(session, recipe_id)
-
-    return recipe
 
 
 @recipesrouter.get("/")
@@ -64,7 +63,7 @@ async def get_recipes(
         current_user_model = await get_user_with_followers_cart_favorites(
             session, current_user.id
         )
-        # print(current_user_model)
+
     filtered = True if (
         is_favorited or is_in_shopping_cart or author_id or tags
     ) else False
@@ -79,15 +78,7 @@ async def get_recipes(
         filtered=filtered
     )
 
-    base_url = str(request.url).split("?")[0]
-    next_url = (
-        f"{base_url}?page={page + 1}&size={size}"
-        if (page * size) < total_recipes else None
-    )
-    previous_url = (
-        f"{base_url}?page={page - 1}&size={size}"
-        if page > 1 else None
-    )
+    previous_url, next_url = get_prev_and_next_page(request, page, size, total_recipes)
 
     recipes = await get_recipes_with_filters(
         session,
@@ -150,7 +141,6 @@ async def get_recipes(
     )
 
 
-
 @recipesrouter.post("/", response_class=JSONResponse)
 async def create_new_recipe(
     request: Request,
@@ -158,10 +148,10 @@ async def create_new_recipe(
     session: AsyncSession = Depends(get_session),
     current_user: UserAuth = Depends(get_user_from_token)
 ):
-    recipe_exists = await check_recipe_exists(
+    recipe = await get_recipe_by_user_id_and_name(
         session, recipe_data.name, current_user.id
     )
-    if recipe_exists:
+    if recipe:
         raise HTTPException(
             detail="You can't create recipes with the same name",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -171,7 +161,7 @@ async def create_new_recipe(
         base64_str = recipe_data.image.split(",", 1)[1]
     else:
         raise HTTPException(
-            detail="Field image can't be empty",
+            detail="Field image should be Base64",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
 
@@ -228,9 +218,9 @@ async def create_new_recipe(
 async def get_recipe(
     recipe_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: UserAuth = Depends(get_user_from_token_custom)
+    current_user: Optional[UserAuth] = Depends(get_user_from_token_custom)
 ):
-    recipe = await get_recipe_by_id(session, recipe_id)
+    recipe = await get_recipe_by_id_with_author_tags(session, recipe_id)
     if not recipe:
         raise HTTPException(
             detail="Recpe not fount",
@@ -238,33 +228,35 @@ async def get_recipe(
         )
     recipe_ingredients = await get_ingredients_details(session, recipe_id)
 
-    subscribed_to_author = False
-    recipe_is_favorite = False
-    recipe_in_cart = False
-
     if current_user:
-        user = await get_user_with_followers_cart_favorites(session, current_user.id)
-        subscribed_to_author = True if recipe.author in user.follower else False
-        recipe_is_favorite = True if recipe in user.favorite_recipes else False
-        recipe_in_cart = True if recipe in user.on_cart_recipes else False
-
-    recipe_author = UserDB(
-        id=recipe.author.id,
-        username=recipe.author.username,
-        email=recipe.author.email,
-        first_name=recipe.author.first_name,
-        last_name=recipe.author.last_name,
-        avatar=recipe.author.avatar,
-        is_subscribed=subscribed_to_author
-    )
+        current_user_model = await get_user_with_followers_cart_favorites(
+            session, current_user.id
+        )
 
     serialized_recipe = RecipeDB(
         id=recipe.id,
         tags=recipe.tags,
-        author=recipe_author,
+        author=UserDB(
+            username=recipe.author.username,
+            id=recipe.author.id,
+            email=recipe.author.email,
+            first_name=recipe.author.first_name,
+            last_name=recipe.author.last_name,
+            is_subscribed=(
+                recipe.author in current_user_model.follower
+                if current_user else False
+            ),
+            avatar=recipe.author.avatar
+        ),
         ingredients=recipe_ingredients,
-        is_favorited=recipe_is_favorite,
-        is_in_shopping_cart=recipe_in_cart,
+        is_favorited=(
+                recipe in current_user_model.favorite_recipes
+                if current_user else False
+            ),
+        is_in_shopping_cart=(
+                recipe in current_user_model.on_cart_recipes
+                if current_user else False
+            ),
         name=recipe.name,
         image=recipe.image,
         text=recipe.text,
@@ -272,3 +264,133 @@ async def get_recipe(
     )
 
     return serialized_recipe
+
+
+@recipesrouter.patch("/{recipe_id}", response_model=RecipeDB)
+async def update_recipe(
+    request: Request,
+    recipe_id: int,
+    recipe_data: RecipeBase,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
+):
+    recipe = await get_recipe_by_id_with_author_tags_ingredients(session, recipe_id)
+    if not recipe:
+        raise HTTPException(
+            detail="Recipe not found",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    if recipe.author_id != current_user.id:
+        raise HTTPException(
+            detail="You can only edit your recipe",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
+    recipe_with_name = await get_recipe_by_user_id_and_name(
+        session, recipe_data.name, current_user.id
+    )
+    if recipe_with_name and recipe_with_name.id != recipe_id:
+        raise HTTPException(
+            detail="You already have recipe with same name",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
+    recipe_data_dict = recipe_data.model_dump()
+
+    ingredients = recipe_data_dict.pop("ingredients")
+    validated_ingredients = await check_ingredients(session, ingredients)
+
+    tags = recipe_data_dict.pop("tags")
+    validated_tags = await check_tags(session, tags)
+
+    if recipe_data.image:
+        if recipe_data.image.startswith("data:image/png;base64,"):
+            base64_str = recipe_data.image.split(",", 1)[1]
+            file_path = save_image_from_base64(base64_str, RECIPE_DIRECTORY)
+            base_url = str(request.url.scheme) + "://" + str(request.url.netloc)
+            recipe_data_dict["image"] = base_url + "/" + file_path
+            recipe_data_dict["author_id"] = current_user.id
+        else:
+            raise HTTPException(
+                detail="Field image should be Base64",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        
+    current_user_model = await get_user_with_followers_cart_favorites(
+            session, current_user.id
+        )
+
+    updated_recipe = await update_recipe_model(
+        session, recipe,
+        recipe_data_dict,
+        validated_tags,
+        validated_ingredients
+    )
+
+    ingredients_list_with_amount = await get_ingredients_details(
+        session, updated_recipe.id
+    )
+    serialized_ingredients = [
+        IngredientInRecipe(
+            id=ingredient.id,
+            name=ingredient.name,
+            measurement_unit=ingredient.measurement_unit,
+            amount=ingredient.amount
+        )
+        for ingredient in ingredients_list_with_amount
+    ]
+
+    serialized_recipe = RecipeDB(
+        id=updated_recipe.id,
+        tags=updated_recipe.tags,
+        author=UserDB(
+            email=updated_recipe.author.email,
+            id=updated_recipe.author.id,
+            username=updated_recipe.author.username,
+            first_name=updated_recipe.author.first_name,
+            last_name=updated_recipe.author.last_name,
+            is_subscribed=False,
+            avatar=updated_recipe.author.avatar,
+
+        ),
+        ingredients=serialized_ingredients,
+        is_favorited=(
+                True if
+                updated_recipe in current_user_model.favorite_recipes
+                else False
+            ),
+        is_in_shopping_cart=(
+                True if
+                updated_recipe in current_user_model.on_cart_recipes
+                else False
+            ),
+        name=updated_recipe.name,
+        image=updated_recipe.image,
+        text=updated_recipe.text,
+        cooking_time=updated_recipe.cooking_time
+    )
+
+    return serialized_recipe
+
+
+@recipesrouter.delete("/{recipe_id}", response_model=RecipeDB)
+async def delete_recipe(
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
+):
+    recipe_to_delete = await get_recipe_by_id(session, recipe_id)
+    if not recipe_to_delete:
+        raise HTTPException(
+            detail="Recipe not found",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    if recipe_to_delete.author_id != current_user.id:
+        raise HTTPException(
+            detail="You can only delete your recipe",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
+    await delete_recipe_model(session, recipe_to_delete)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

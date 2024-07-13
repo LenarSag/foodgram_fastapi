@@ -115,34 +115,84 @@ async def create_recipe(
     return recipe
 
 
-async def check_recipe_exists(
+async def update_recipe_model(
+    session: AsyncSession,
+    recipe_model: Recipe,
+    recipe_data: dict[str, Any],
+    tag_models: Sequence[Tag],
+    ingredients_list: list[dict[str, int]]
+) -> Recipe:
+    recipe_model.text = recipe_data.get("text")
+    recipe_model.name = recipe_data.get("name")
+    recipe_model.cooking_time = recipe_data.get("cooking_time")
+    if recipe_data.get("image"):
+        recipe_model.image = recipe_data.get("image")
+
+    recipe_model.tags.clear()
+    recipe_model.tags.extend(tag_models)
+    await session.flush()
+
+    recipe_model.ingredients.clear()
+    recipe_ingredient = [
+        RecipeIngredient(
+            recipe_id=recipe_model.id,
+            ingredient_id=ingredient.get("id"),
+            amount=ingredient.get("amount")
+        )
+        for ingredient in ingredients_list
+    ]
+    session.add_all(recipe_ingredient)
+    await session.commit()
+    await session.refresh(
+        recipe_model, attribute_names=[
+            "tags", "author"
+            ]
+    )
+
+    return recipe_model
+
+
+async def delete_recipe_model(session: AsyncSession, recipe_model: Recipe):
+    await session.delete(recipe_model)
+    await session.commit()
+    return True
+
+
+async def get_recipe_by_user_id_and_name(
     session: AsyncSession, recipe_name: str, user_id: int
-) -> bool:
+) -> Optional[Recipe]:
     query = select(Recipe).where(
         Recipe.author_id == user_id, Recipe.name == recipe_name
-    )
-    result = await session.execute(query)
-    recipe = result.scalars().first()
-    return recipe is not None
-
-
-async def get_recipe_by_id(
-        session: AsyncSession, recipe_id: int
-) -> Optional[Recipe]:
-    query = select(Recipe).filter_by(id=recipe_id).options(
-        selectinload(Recipe.author), selectinload(Recipe.tags)
     )
     result = await session.execute(query)
     return result.scalars().first()
 
 
-async def get_recipe_by_id_test(
+async def get_recipe_by_id(
+        session: AsyncSession, recipe_id: int
+) -> Optional[Recipe]:
+    query = select(Recipe).filter_by(id=recipe_id)
+    result = await session.execute(query)
+    return result.scalars().first()
+
+
+async def get_recipe_by_id_with_author_tags(
+        session: AsyncSession, recipe_id: int
+) -> Optional[Recipe]:
+    query = select(Recipe).filter_by(id=recipe_id).options(
+        selectinload(Recipe.author),
+        selectinload(Recipe.tags)
+    )
+    result = await session.execute(query)
+    return result.scalars().first()
+
+
+async def get_recipe_by_id_with_author_tags_ingredients(
         session: AsyncSession, recipe_id: int
 ) -> Optional[Recipe]:
     query = select(Recipe).filter_by(id=recipe_id).options(
         selectinload(Recipe.author),
         selectinload(Recipe.tags),
-        selectinload(Recipe.ingredient_associations),
         selectinload(Recipe.ingredients)
     )
     result = await session.execute(query)

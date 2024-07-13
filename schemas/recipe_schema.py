@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from typing_extensions import Annotated
 
@@ -11,11 +12,11 @@ from schemas.tag_schema import TagDB
 from schemas.user_schema import UserDB
 
 
-class RecipeCreate(BaseModel):
+class RecipeBase(BaseModel):
     ingredients: list[IngredientsRecipeCreate]
     tags: list[Annotated[int, Field(ge=1)]]
     text: str
-    image: str
+    image: Optional[str] = None
     name: Annotated[str, Field(max_length=MAX_FIELD_LENGTH)]
     cooking_time: Annotated[
         int, Field(ge=MIN_COOKING_TIME, le=MAX_COOKING_TIME)
@@ -34,6 +35,10 @@ class RecipeCreate(BaseModel):
         if not value:
             raise ValueError("Ingredients can't be empty")
         return value
+
+
+class RecipeCreate(RecipeBase):
+    image: str
 
 
 class RecipeDB(BaseModel):

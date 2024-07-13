@@ -85,7 +85,7 @@ class RecipeIngredient(Base):
     )
 
     ingredient: Mapped["Ingredient"] = relationship(
-        back_populates="recipe_associations"
+        back_populates="recipe_associations",
     )
     recipe: Mapped["Recipe"] = relationship(
         back_populates="ingredient_associations"
@@ -103,7 +103,7 @@ class Ingredient(Base):
         secondary="recipe_ingredient", back_populates="ingredients"
     )
     recipe_associations: Mapped[list["RecipeIngredient"]] = relationship(
-        back_populates="ingredient"
+        back_populates="ingredient", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -139,7 +139,7 @@ class Recipe(Base):
         secondary="recipe_ingredient", back_populates="recipes"
     )
     ingredient_associations: Mapped[list["RecipeIngredient"]] = relationship(
-        back_populates="recipe"
+        back_populates="recipe", cascade="all, delete-orphan"
     )
     user_favorite = relationship(
         "User", secondary=favorite, back_populates="favorite_recipes"
