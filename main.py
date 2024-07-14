@@ -11,6 +11,7 @@ from api.users import usersrouter
 from api.ingredients import ingredientsrouter
 from api.tags import tagsrouter
 from api.recipes import recipesrouter
+from api.short_url import shorturlrouter
 
 
 API_URL = "api"
@@ -22,6 +23,7 @@ app.include_router(usersrouter, prefix=f"/{API_URL}/users")
 app.include_router(ingredientsrouter, prefix=f"/{API_URL}/ingredients")
 app.include_router(tagsrouter, prefix=f"/{API_URL}/tags")
 app.include_router(recipesrouter, prefix=f"/{API_URL}/recipes")
+app.include_router(shorturlrouter, prefix="/s")
 
 
 @app.exception_handler(ValidationException)

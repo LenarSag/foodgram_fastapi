@@ -12,7 +12,8 @@ from config import (
     MIN_PAGE_NUM,
     OBJ_PER_PAGE,
     PDF_FILENAME,
-    RECIPE_DIRECTORY
+    RECIPE_DIRECTORY,
+    SHORT_URL_PATH
 )
 from crud.ingredient_repository import get_ingredients_details
 from crud.recipes_repository import (
@@ -238,6 +239,19 @@ async def create_new_recipe(
         status_code=status.HTTP_201_CREATED,
         content=serialized_recipe.model_dump()
     )
+
+
+@recipesrouter.get("/{recipe_id}/get-link")
+async def get_short_link(
+    request: Request,
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session)
+):
+    recipe = await get_recipe_or_404(session, recipe_id)
+    short_url = recipe.short_url
+    base_url = str(request.url.scheme) + "://" + str(request.url.netloc)
+    short_url_link = f"{base_url}/{SHORT_URL_PATH}/{short_url}"
+    return {"short-link": short_url_link}
 
 
 @recipesrouter.post("/{recipe_id}/favorite", response_class=JSONResponse)
@@ -536,4 +550,3 @@ async def delete_recipe(
     await delete_recipe_model(session, recipe_to_delete)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

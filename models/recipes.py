@@ -156,6 +156,6 @@ class Recipe(Base):
         return f"{self.name}. Автор: {self.author.username}"
 
     @property
-    def get_short_url(self):
+    def short_url(self):
         short_url = get_hashed_short_url(self.id)
         return short_url
