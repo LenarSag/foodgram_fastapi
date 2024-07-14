@@ -1,7 +1,3 @@
-alembic revision --autogenerate -m 'initial'
-alembic upgrade head
-
-
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)  ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)
 
 
@@ -25,16 +21,15 @@ API для Foodgram написан с использованием библио�
 ### Технологии
 
 - Python 3.9
-- Django 3.2
-- Django REST framework 3.12
 - FastAPI
+- SqlAlchemy
 
 
 ### Запуск проекта в dev-режиме
 
 Клонировать репозиторий и перейти в него в командной строке: 
 ```
-git clone git@github.com:LenarSag/foodgram.git
+git clone git@github.com:LenarSag/foodgram_fastapi.git
 ```
 Cоздать и активировать виртуальное окружение: 
 ```
