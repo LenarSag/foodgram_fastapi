@@ -1,11 +1,11 @@
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import func, Exists
+from sqlalchemy import func, insert, delete, Exists
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.recipes import Recipe, RecipeIngredient, Tag, favorite, cart
+from models.recipes import Ingredient, Recipe, RecipeIngredient, Tag, favorite, cart
 
 
 def get_favorite_recipes_query(user_id) -> Exists:
@@ -41,7 +41,7 @@ async def get_recipes_with_filters(
         selectinload(Recipe.ingredient_associations),
         selectinload(Recipe.ingredients),
         selectinload(Recipe.user_favorite),
-        selectinload(Recipe.user_on_cart)
+        selectinload(Recipe.user_in_cart)
         ).offset(skip).limit(limit)
 
     if filtered:
@@ -132,7 +132,7 @@ async def update_recipe_model(
     recipe_model.tags.extend(tag_models)
     await session.flush()
 
-    recipe_model.ingredients.clear()
+    recipe_model.ingredient_associations.clear()
     recipe_ingredient = [
         RecipeIngredient(
             recipe_id=recipe_model.id,
@@ -193,7 +193,100 @@ async def get_recipe_by_id_with_author_tags_ingredients(
     query = select(Recipe).filter_by(id=recipe_id).options(
         selectinload(Recipe.author),
         selectinload(Recipe.tags),
-        selectinload(Recipe.ingredients)
+        selectinload(Recipe.ingredient_associations)
     )
     result = await session.execute(query)
     return result.scalars().first()
+
+
+async def recipe_exists_in_favorites(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    query = select(favorite).where(
+        favorite.c.recipe_id == recipe_id,
+        favorite.c.user_id == user_id
+    )
+    result = await session.execute(query)
+    subscription_row = result.fetchone()
+    return subscription_row is not None
+
+
+async def add_recipe_to_favorite(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    stmt = insert(favorite).values(
+        recipe_id=recipe_id, user_id=user_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def delete_recipe_from_favorite(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    stmt = delete(favorite).where(
+        favorite.c.recipe_id == recipe_id,
+        favorite.c.user_id == user_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def recipe_exists_in_cart(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    query = select(cart).where(
+        cart.c.recipe_id == recipe_id,
+        cart.c.user_id == user_id
+    )
+    result = await session.execute(query)
+    subscription_row = result.fetchone()
+    return subscription_row is not None
+
+
+async def add_recipe_to_cart(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    stmt = insert(cart).values(
+        recipe_id=recipe_id, user_id=user_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def delete_recipe_from_cart(
+        session: AsyncSession, recipe_id: int, user_id: int
+) -> bool:
+    stmt = delete(cart).where(
+        cart.c.recipe_id == recipe_id,
+        cart.c.user_id == user_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return True
+
+
+async def get_ingredients_in_user_cart(
+    session: AsyncSession, user_id: int
+) -> list[dict[str, Any]]:
+    stmt = (
+        select(
+            Ingredient.name,
+            Ingredient.measurement_unit,
+            func.sum(RecipeIngredient.amount).label("total_amount")
+        )
+        .join(RecipeIngredient, Ingredient.id == RecipeIngredient.ingredient_id)
+        .join(cart, cart.c.recipe_id == RecipeIngredient.recipe_id)
+        .where(cart.c.user_id == user_id)
+        .group_by(Ingredient.name, Ingredient.measurement_unit)
+    )
+
+    result = await session.execute(stmt)
+    ingredients = result.all()
+    return [
+        {"name": name, "measurement_unit": measurement_unit, "amount": total_amount}
+        for name, measurement_unit, total_amount in ingredients
+    ]

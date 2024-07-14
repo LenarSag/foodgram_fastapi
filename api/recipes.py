@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import (
     APIRouter, HTTPException, Request, Response, Query, status, Depends
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
@@ -15,9 +15,16 @@ from config import (
 )
 from crud.ingredient_repository import get_ingredients_details
 from crud.recipes_repository import (
+    add_recipe_to_cart,
+    add_recipe_to_favorite,
     count_recipes_with_filters,
     create_recipe,
+    delete_recipe_from_cart,
+    delete_recipe_from_favorite,
     delete_recipe_model,
+    get_ingredients_in_user_cart,
+    recipe_exists_in_cart,
+    recipe_exists_in_favorites,
     get_recipe_by_id,
     get_recipe_by_id_with_author_tags,
     get_recipe_by_id_with_author_tags_ingredients,
@@ -27,12 +34,14 @@ from crud.recipes_repository import (
 )
 from crud.user_repository import get_user_with_followers_cart_favorites
 from db.database import get_session
+from models.recipes import Recipe
 from schemas.ingredient_schema import IngredientInRecipe
 from schemas.pagination_schema import PaginatedRecipes
-from schemas.recipe_schema import RecipeBase, RecipeCreate, RecipeDB
+from schemas.recipe_schema import RecipeBase, RecipeCreate, RecipeDB, RecipeShort
 from schemas.user_schema import UserAuth, UserDB
 from security.security import get_user_from_token, get_user_from_token_custom
 from utils.custom_pagination import get_prev_and_next_page
+from utils.pdf import generate_pdf
 from utils.save_base64 import save_image_from_base64
 from utils.validators import check_tags, check_ingredients
 
@@ -40,7 +49,21 @@ from utils.validators import check_tags, check_ingredients
 recipesrouter = APIRouter()
 
 
-@recipesrouter.get("/")
+async def get_recipe_or_404(
+    session: AsyncSession, recipe_id: int
+) -> Optional[Recipe]:
+    recipe = await get_recipe_by_id(session, recipe_id)
+    if not recipe:
+        raise HTTPException(
+            detail="Recipe not found",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    return recipe
+
+
+
+
+@recipesrouter.get("/", response_model=PaginatedRecipes)
 async def get_recipes(
     request: Request,
     session: AsyncSession = Depends(get_session),
@@ -122,7 +145,7 @@ async def get_recipes(
                 if current_user else False
             ),
             is_in_shopping_cart=(
-                recipe in current_user_model.on_cart_recipes
+                recipe in current_user_model.in_cart_recipes
                 if current_user else False
             ),
             name=recipe.name,
@@ -214,6 +237,119 @@ async def create_new_recipe(
     )
 
 
+@recipesrouter.post("/{recipe_id}/favorite", response_class=JSONResponse)
+async def add_to_favorite(
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
+):
+    recipe_to_favorite = await get_recipe_or_404(session, recipe_id)
+    favorite_recipe = await recipe_exists_in_favorites(
+        session, recipe_id, current_user.id
+    )
+    if favorite_recipe:
+        raise HTTPException(
+            detail="You already have this recipe in favorites",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    await add_recipe_to_favorite(session, recipe_to_favorite.id, current_user.id)
+    serialized_recipe = RecipeShort(
+        id=recipe_to_favorite.id,
+        name=recipe_to_favorite.name,
+        image=recipe_to_favorite.image,
+        cooking_time=recipe_to_favorite.cooking_time
+    )
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content=serialized_recipe.model_dump()
+    )
+
+
+@recipesrouter.delete("/{recipe_id}/favorite", response_class=Response)
+async def delete_from_favorite(
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
+):
+    recipe_to_delete = await get_recipe_or_404(session, recipe_id)
+    favorite_recipe = await recipe_exists_in_favorites(
+        session, recipe_to_delete.id, current_user.id
+    )
+    if not favorite_recipe:
+        raise HTTPException(
+            detail="This recipe isn't your favorite",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    await delete_recipe_from_favorite(
+        session, recipe_to_delete.id, current_user.id
+    )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@recipesrouter.post("/{recipe_id}/shopping_cart", response_class=JSONResponse)
+async def add_to_cart(
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: Optional[UserAuth] = Depends(get_user_from_token)
+):
+    recipe_to_cart = await get_recipe_or_404(session, recipe_id)
+    in_cart_recipe = await recipe_exists_in_cart(
+        session, recipe_id, current_user.id
+    )
+    if in_cart_recipe:
+        raise HTTPException(
+            detail="You already have this recipe in cart",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    await add_recipe_to_cart(session, recipe_to_cart.id, current_user.id)
+    serialized_recipe = RecipeShort(
+        id=recipe_to_cart.id,
+        name=recipe_to_cart.name,
+        image=recipe_to_cart.image,
+        cooking_time=recipe_to_cart.cooking_time
+    )
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content=serialized_recipe.model_dump()
+    )
+
+
+@recipesrouter.delete("/{recipe_id}/shopping_cart", response_class=Response)
+async def delete_from_cart(
+    recipe_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
+):
+    recipe_to_delete = await get_recipe_or_404(session, recipe_id)
+    on_cart_recipe = await recipe_exists_in_cart(
+        session, recipe_to_delete.id, current_user.id
+    )
+    if not on_cart_recipe:
+        raise HTTPException(
+            detail="This recipe isn't in your cart",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    await delete_recipe_from_cart(
+        session, recipe_to_delete.id, current_user.id
+    )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@recipesrouter.get("/download_shopping_cart")
+async def test(
+    session: AsyncSession = Depends(get_session), current_user: UserAuth = Depends(get_user_from_token)
+):
+    ingredients_list = await get_ingredients_in_user_cart(session, current_user.id)
+    pdf_buffer = generate_pdf(ingredients_list)
+    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=shopping_cart.pdf"})
+
+
 @recipesrouter.get("/{recipe_id}", response_model=RecipeDB)
 async def get_recipe(
     recipe_id: int,
@@ -254,7 +390,7 @@ async def get_recipe(
                 if current_user else False
             ),
         is_in_shopping_cart=(
-                recipe in current_user_model.on_cart_recipes
+                recipe in current_user_model.in_cart_recipes
                 if current_user else False
             ),
         name=recipe.name,
@@ -315,7 +451,7 @@ async def update_recipe(
                 detail="Field image should be Base64",
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
-        
+
     current_user_model = await get_user_with_followers_cart_favorites(
             session, current_user.id
         )
@@ -361,7 +497,7 @@ async def update_recipe(
             ),
         is_in_shopping_cart=(
                 True if
-                updated_recipe in current_user_model.on_cart_recipes
+                updated_recipe in current_user_model.in_cart_recipes
                 else False
             ),
         name=updated_recipe.name,
@@ -379,12 +515,7 @@ async def delete_recipe(
     session: AsyncSession = Depends(get_session),
     current_user: UserAuth = Depends(get_user_from_token)
 ):
-    recipe_to_delete = await get_recipe_by_id(session, recipe_id)
-    if not recipe_to_delete:
-        raise HTTPException(
-            detail="Recipe not found",
-            status_code=status.HTTP_404_NOT_FOUND
-        )
+    recipe_to_delete = await get_recipe_or_404(session, recipe_id)
     if recipe_to_delete.author_id != current_user.id:
         raise HTTPException(
             detail="You can only delete your recipe",
@@ -394,3 +525,4 @@ async def delete_recipe(
     await delete_recipe_model(session, recipe_to_delete)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+

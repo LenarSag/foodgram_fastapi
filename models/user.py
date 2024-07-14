@@ -65,8 +65,8 @@ class User(Base):
     favorite_recipes = relationship(
         "Recipe", secondary="favorite", back_populates="user_favorite"
     )
-    on_cart_recipes = relationship(
-        "Recipe", secondary="cart", back_populates="user_on_cart"
+    in_cart_recipes = relationship(
+        "Recipe", secondary="cart", back_populates="user_in_cart"
     )
 
     @validates("username")

@@ -41,6 +41,13 @@ class RecipeCreate(RecipeBase):
     image: str
 
 
+class RecipeShort(BaseModel):
+    id: int
+    name: str
+    image: str
+    cooking_time: int
+
+
 class RecipeDB(BaseModel):
     id: int
     tags: list[TagDB]

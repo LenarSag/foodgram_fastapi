@@ -144,8 +144,8 @@ class Recipe(Base):
     user_favorite = relationship(
         "User", secondary=favorite, back_populates="favorite_recipes"
     )
-    user_on_cart = relationship(
-        "User", secondary=cart, back_populates="on_cart_recipes"
+    user_in_cart = relationship(
+        "User", secondary=cart, back_populates="in_cart_recipes"
     )
 
     __table_args__ = (

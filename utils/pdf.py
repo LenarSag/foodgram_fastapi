@@ -1,5 +1,6 @@
 import io
 import os
+from typing import Any
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -16,13 +17,14 @@ from config import (
 )
 
 
-def generate_pdf(ingredients):
+def generate_pdf(ingredients: list[dict[str, Any]]) -> io.BytesIO:
     """Создает из списка ингредиентов файл pdf с поддержкой кириллицы."""
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=letter)
     _, height = letter
 
     current_dir = os.path.dirname(__file__)
+    print(current_dir)
     font_path = os.path.join(current_dir, "fonts/dejavusans.ttf")
 
     pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
@@ -38,7 +40,7 @@ def generate_pdf(ingredients):
 
     for ingredient in ingredients:
         name = ingredient.get("name")
-        measurement = ingredient.get("measurement")
+        measurement = ingredient.get("measurement_unit")
         amount = ingredient.get("amount")
         pdf.drawString(
             INDENT_LEFT_REGULAR,

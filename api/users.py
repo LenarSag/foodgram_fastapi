@@ -303,11 +303,9 @@ async def delete_subscribe(
             detail="You are not subscribed to this user.",
             status_code=status.HTTP_400_BAD_REQUEST
         )
-    subscription_deleted = await delete_subscription(
-        session, user_id, current_user.id
-    )
-    if subscription_deleted:
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    await delete_subscription(session, user_id, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @usersrouter.get("/{user_id}/", response_model=UserDB)
