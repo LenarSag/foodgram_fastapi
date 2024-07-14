@@ -19,6 +19,7 @@ from schemas.pagination_schema import (
     PaginatedUsers
 )
 from schemas.user_schema import (
+    RecipeShortForUser,
     UserAuth,
     UserAvatar,
     UserChangePassword,
@@ -27,7 +28,6 @@ from schemas.user_schema import (
     UserDB,
     UserSubscription
 )
-from schemas.recipe_schema import RecipeShort
 from db.database import get_session
 from crud.user_repository import (
     add_avatar_to_field,
@@ -58,9 +58,9 @@ usersrouter = APIRouter()
 
 def get_limited_recipes(
     user: User, recipe_limits: Optional[int] = None
-) -> list[RecipeShort]:
+) -> list[RecipeShortForUser]:
     recipes = [
-        RecipeShort(
+        RecipeShortForUser(
             id=recipe.id,
             name=recipe.name,
             image=recipe.image,

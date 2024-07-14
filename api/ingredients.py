@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.ingredient_repository import (
@@ -12,8 +13,11 @@ ingredientsrouter = APIRouter()
 
 
 @ingredientsrouter.get("/", response_model=list[IngredientDB])
-async def get_ingredients(session: AsyncSession = Depends(get_session)):
-    ingredients = await get_all_ingredients(session)
+async def get_ingredients(
+    name: Optional[str] = Query(None),
+    session: AsyncSession = Depends(get_session)
+):
+    ingredients = await get_all_ingredients(session, name)
     return ingredients
 
 

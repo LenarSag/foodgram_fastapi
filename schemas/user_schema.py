@@ -5,7 +5,6 @@ from fastapi.exceptions import ValidationException
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from config import MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH
-from schemas.recipe_schema import RecipeShort
 
 
 class UserAuth(BaseModel):
@@ -54,8 +53,15 @@ class UserDB(UserCreated):
     is_subscribed: bool = False
 
 
+class RecipeShortForUser(BaseModel):
+    id: int
+    name: str
+    image: str
+    cooking_time: int
+
+
 class UserSubscription(UserDB):
-    recipes: list[RecipeShort]
+    recipes: list[RecipeShortForUser]
     recipes_count: int
 
 

@@ -7,8 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.recipes import Ingredient, RecipeIngredient
 
 
-async def get_all_ingredients(session: AsyncSession) -> Sequence[Ingredient]:
+async def get_all_ingredients(
+    session: AsyncSession,
+    name: Optional[str]
+) -> Sequence[Ingredient]:
     query = select(Ingredient)
+    if name:
+        query = query.where(Ingredient.name.startswith(name))
     result = await session.execute(query)
     return result.scalars().all()
 
