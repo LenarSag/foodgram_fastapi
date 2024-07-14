@@ -13,6 +13,7 @@ from config import (
     OBJ_PER_PAGE,
     USER_DIRECTORY
 )
+from models.user import User
 from schemas.pagination_schema import (
     PaginatedSubscriptionUsers,
     PaginatedUsers
@@ -26,6 +27,7 @@ from schemas.user_schema import (
     UserDB,
     UserSubscription
 )
+from schemas.recipe_schema import RecipeShort
 from db.database import get_session
 from crud.user_repository import (
     add_avatar_to_field,
@@ -52,6 +54,24 @@ from utils.save_base64 import save_image_from_base64
 
 
 usersrouter = APIRouter()
+
+
+def get_limited_recipes(
+    user: User, recipe_limits: Optional[int] = None
+) -> list[RecipeShort]:
+    recipes = [
+        RecipeShort(
+            id=recipe.id,
+            name=recipe.name,
+            image=recipe.image,
+            cooking_time=recipe.cooking_time
+        ) for recipe in user.recipes
+    ]
+
+    if recipe_limits is not None:
+        recipes = recipes[:recipe_limits]
+
+    return recipes
 
 
 @usersrouter.get("/", response_model=PaginatedUsers)
@@ -209,7 +229,7 @@ async def get_my_subscriptions(
     users = await get_following_users(session, current_user.id)
 
     previous_url, next_url = get_prev_and_next_page(request, page, size, total)
-    
+
     results = [
         UserSubscription(
             id=user.id,
@@ -219,10 +239,7 @@ async def get_my_subscriptions(
             last_name=user.last_name,
             is_subscribed=True,
             avatar=user.avatar,
-            recipes=(
-                user.recipes[:recipe_limits]
-                if recipe_limits is not None else user.recipes
-            ),
+            recipes=get_limited_recipes(user, recipe_limits),
             recipes_count=len(user.recipes)
         )
         for user in users

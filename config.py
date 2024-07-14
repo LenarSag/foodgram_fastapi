@@ -35,5 +35,7 @@ INDENT_LEFT_REGULAR = 30
 INDENT_AFTER_HEADER = 30
 INDENT_BETWEEN_INGREDIENTS = 20
 
+PDF_FILENAME = "spisok_pokupok.pdf"
+
 USER_DIRECTORY = "media/users/images/"
 RECIPE_DIRECTORY = "media/recipes/images/"

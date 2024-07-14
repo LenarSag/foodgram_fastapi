@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import (
     APIRouter, HTTPException, Request, Response, Query, status, Depends
 )
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
@@ -11,6 +11,7 @@ from config import (
     MAX_OBJ_PER_PAGE,
     MIN_PAGE_NUM,
     OBJ_PER_PAGE,
+    PDF_FILENAME,
     RECIPE_DIRECTORY
 )
 from crud.ingredient_repository import get_ingredients_details
@@ -37,7 +38,9 @@ from db.database import get_session
 from models.recipes import Recipe
 from schemas.ingredient_schema import IngredientInRecipe
 from schemas.pagination_schema import PaginatedRecipes
-from schemas.recipe_schema import RecipeBase, RecipeCreate, RecipeDB, RecipeShort
+from schemas.recipe_schema import (
+    RecipeBase, RecipeCreate, RecipeDB, RecipeShort
+)
 from schemas.user_schema import UserAuth, UserDB
 from security.security import get_user_from_token, get_user_from_token_custom
 from utils.custom_pagination import get_prev_and_next_page
@@ -341,13 +344,21 @@ async def delete_from_cart(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@recipesrouter.get("/download_shopping_cart")
+@recipesrouter.get("/download_shopping_cart", response_class=StreamingResponse)
 async def test(
-    session: AsyncSession = Depends(get_session), current_user: UserAuth = Depends(get_user_from_token)
+    session: AsyncSession = Depends(get_session),
+    current_user: UserAuth = Depends(get_user_from_token)
 ):
-    ingredients_list = await get_ingredients_in_user_cart(session, current_user.id)
+    ingredients_list = await get_ingredients_in_user_cart(
+        session, current_user.id
+    )
     pdf_buffer = generate_pdf(ingredients_list)
-    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=shopping_cart.pdf"})
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={PDF_FILENAME}"}
+        )
 
 
 @recipesrouter.get("/{recipe_id}", response_model=RecipeDB)

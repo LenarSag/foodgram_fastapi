@@ -278,7 +278,9 @@ async def get_ingredients_in_user_cart(
             Ingredient.measurement_unit,
             func.sum(RecipeIngredient.amount).label("total_amount")
         )
-        .join(RecipeIngredient, Ingredient.id == RecipeIngredient.ingredient_id)
+        .join(
+            RecipeIngredient, Ingredient.id == RecipeIngredient.ingredient_id
+        )
         .join(cart, cart.c.recipe_id == RecipeIngredient.recipe_id)
         .where(cart.c.user_id == user_id)
         .group_by(Ingredient.name, Ingredient.measurement_unit)
@@ -286,7 +288,12 @@ async def get_ingredients_in_user_cart(
 
     result = await session.execute(stmt)
     ingredients = result.all()
+
     return [
-        {"name": name, "measurement_unit": measurement_unit, "amount": total_amount}
+        {
+            "name": name,
+            "measurement_unit": measurement_unit,
+            "amount": total_amount
+        }
         for name, measurement_unit, total_amount in ingredients
     ]
