@@ -7,7 +7,7 @@ from utils.short_url import get_decoded_short_url
 shorturlrouter = APIRouter()
 
 
-@shorturlrouter.get("/{short_url}")
+@shorturlrouter.get("/{short_url}", response_class=RedirectResponse)
 async def handle_short_url(
     request: Request,
     short_url: str

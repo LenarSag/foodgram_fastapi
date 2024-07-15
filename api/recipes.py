@@ -241,7 +241,7 @@ async def create_new_recipe(
     )
 
 
-@recipesrouter.get("/{recipe_id}/get-link")
+@recipesrouter.get("/{recipe_id}/get-link", response_model=dict[str, str])
 async def get_short_link(
     request: Request,
     recipe_id: int,
