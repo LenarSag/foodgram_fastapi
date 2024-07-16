@@ -179,11 +179,11 @@ async def delete_avatar(
     session: AsyncSession = Depends(get_session),
     current_user: UserAuth = Depends(get_user_from_token),
 ):
-    avatar_deleted = await delete_avatar_field(
+    await delete_avatar_field(
         session, current_user.id
     )
-    if avatar_deleted:
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @usersrouter.get("/me/", response_model=UserDB)

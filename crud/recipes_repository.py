@@ -5,7 +5,24 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.recipes import Ingredient, Recipe, RecipeIngredient, Tag, favorite, cart
+from models.recipes import (
+    Ingredient, Recipe, RecipeIngredient, Tag, favorite, cart
+)
+
+
+def set_ingredients(
+    ingredients_list: list[dict[str, int]], recipe_id: int
+) -> list[RecipeIngredient]:
+    recipe_ingredient = [
+        RecipeIngredient(
+            recipe_id=recipe_id,
+            ingredient_id=ingredient.get("id"),
+            amount=ingredient.get("amount")
+        )
+        for ingredient in ingredients_list
+    ]
+
+    return recipe_ingredient
 
 
 def get_favorite_recipes_query(user_id) -> Exists:
@@ -100,15 +117,9 @@ async def create_recipe(
     recipe.tags.extend(tag_models)
     await session.flush()
 
-    recipe_ingredient = [
-        RecipeIngredient(
-            recipe_id=recipe.id,
-            ingredient_id=ingredient.get("id"),
-            amount=ingredient.get("amount")
-        )
-        for ingredient in ingredients_list
-    ]
-    session.add_all(recipe_ingredient)
+    recipe_ingredient_data = set_ingredients(ingredients_list, recipe.id)
+    session.add_all(recipe_ingredient_data)
+
     await session.commit()
     await session.refresh(recipe, attribute_names=["tags", "author"])
 
@@ -133,15 +144,9 @@ async def update_recipe_model(
     await session.flush()
 
     recipe_model.ingredient_associations.clear()
-    recipe_ingredient = [
-        RecipeIngredient(
-            recipe_id=recipe_model.id,
-            ingredient_id=ingredient.get("id"),
-            amount=ingredient.get("amount")
-        )
-        for ingredient in ingredients_list
-    ]
-    session.add_all(recipe_ingredient)
+    recipe_ingredient_data = set_ingredients(ingredients_list, recipe_model.id)
+    session.add_all(recipe_ingredient_data)
+
     await session.commit()
     await session.refresh(
         recipe_model, attribute_names=[
